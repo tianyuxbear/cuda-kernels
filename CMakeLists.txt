@@ -22,3 +22,5 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 # Add example executables (Hello World, device info, etc.)
 add_subdirectory(examples)
 
+# Add elementwise kernels (add, etc.)
+add_subdirectory(src/elementwise)
