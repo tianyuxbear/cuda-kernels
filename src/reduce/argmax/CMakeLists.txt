@@ -1,0 +1,1 @@
+add_executable(reduce_argmax reduce_argmax.cu)
