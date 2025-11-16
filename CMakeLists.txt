@@ -19,5 +19,6 @@ set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} -O3")# High optimizati
 # Include headers
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-
+# Add example executables (Hello World, device info, etc.)
+add_subdirectory(examples)
 
