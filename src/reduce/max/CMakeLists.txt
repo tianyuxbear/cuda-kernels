@@ -1,0 +1,1 @@
+add_executable(reduce_max reduce_max.cu)
