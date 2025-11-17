@@ -27,3 +27,6 @@ add_subdirectory(src/elementwise)
 
 # Add reduce kernels (max, etc.)
 add_subdirectory(src/reduce)
+
+# Add embedding kernels
+add_subdirectory(src/embedding)

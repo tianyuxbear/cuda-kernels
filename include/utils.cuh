@@ -1,10 +1,13 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #include <iomanip>
 #include <iostream>
+#include <random>
+#include <unordered_set>
 
 #define BLOCK_SIZE 256
 constexpr inline int ceil_div(int a, int b) { return (a + b - 1) / b; }
@@ -26,6 +29,58 @@ bool verify_results(const float *host_ref, const float *gpu_ref, int n,
   }
   // std::cout << "Verification passed (" << n << " elements).\n";
   return true;
+}
+
+void fill_array_with_random_floats(float *base, size_t len,
+                                   float min_val = 0.0f, float max_val = 1.0f) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> dis(min_val, max_val);
+
+  for (size_t i = 0; i < len; ++i) {
+    base[i] = dis(gen);
+  }
+}
+
+std::vector<int> random_sample_ints(int M, int N) {
+  if (N > M) {
+    throw std::invalid_argument("N cannot be greater than M");
+  }
+  if (N < 0 || M < 0) {
+    throw std::invalid_argument("N and M must be non-negative");
+  }
+
+  std::vector<int> result;
+  result.reserve(N);
+
+  // 方法1: 当N较小时，使用拒绝采样
+  if (N <= M / 2) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<int> dis(0, M - 1);
+    std::unordered_set<int> selected;
+
+    while (selected.size() < static_cast<size_t>(N)) {
+      selected.insert(dis(gen));
+    }
+
+    result.assign(selected.begin(), selected.end());
+  }
+  // 方法2: 当N较大时，使用洗牌算法
+  else {
+    std::vector<int> pool(M);
+    for (int i = 0; i < M; ++i) {
+      pool[i] = i;
+    }
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::shuffle(pool.begin(), pool.end(), gen);
+
+    result.assign(pool.begin(), pool.begin() + N);
+  }
+
+  return result;
 }
 
 typedef struct BenchmarkResults {
