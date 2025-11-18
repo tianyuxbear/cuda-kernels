@@ -1,0 +1,1 @@
+add_executable(rms_norm rms_norm.cu)
