@@ -1,0 +1,1 @@
+add_executable(layer_norm layer_norm.cu)

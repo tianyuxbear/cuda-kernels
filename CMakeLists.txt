@@ -30,3 +30,6 @@ add_subdirectory(src/reduce)
 
 # Add embedding kernels
 add_subdirectory(src/embedding)
+
+# Add normalize kernels
+add_subdirectory(src/norm)
