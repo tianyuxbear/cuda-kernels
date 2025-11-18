@@ -41,6 +41,8 @@ int main(int argc, char *argv[]) {
     std::vector<float> h_b(N, 2);
     std::vector<float> h_c(N, 0);
     std::vector<float> h_c_gpu(N, 0);
+    fill_array_with_random_floats(h_a.data(), h_a.size());
+    fill_array_with_random_floats(h_b.data(), h_b.size());
 
     // Allocate device memory
     float *d_a, *d_b, *d_c;

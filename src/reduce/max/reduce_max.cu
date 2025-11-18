@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
     std::vector<float> h_input(N);
     float h_output{};
     float h_output_gpu{};
+    fill_array_with_random_floats(h_input.data(), h_input.size());
 
     // Allocate device memory
     float *d_input, *d_output;

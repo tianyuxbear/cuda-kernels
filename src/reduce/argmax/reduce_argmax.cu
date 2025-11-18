@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
     uint32_t h_max_idx{}, h_max_idx_gpu{};
     float h_max_val{}, h_max_val_gpu{};
     unsigned long long h_packed_res = pack(-std::numeric_limits<float>::infinity(), UINT32_MAX);
+    fill_array_with_random_floats(h_input.data(), h_input.size());
 
     // Allocate device memory
     float *d_input;
