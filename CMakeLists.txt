@@ -36,3 +36,6 @@ add_subdirectory(src/norm)
 
 # Add matmul kernels
 add_subdirectory(src/linear)
+
+# Add matvec kernels
+add_subdirectory(src/matvec)
