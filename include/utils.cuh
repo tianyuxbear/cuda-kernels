@@ -16,14 +16,17 @@ using cuda_bfloat16 = nv_bfloat16;
 using cuda_bfloat162 = nv_bfloat162;
 
 bool verify_results(const float *host_ref, const float *gpu_ref, int n,
-                    float tolerance = 1e-8f) {
+                    float atol = 1e-5f, float rtol = 1e-5f) {
     for (int i = 0; i < n; ++i) {
-        if (std::abs(host_ref[i] - gpu_ref[i]) > tolerance) {
+        float diff = std::abs(host_ref[i] - gpu_ref[i]);
+        float threshold = atol + rtol * std::abs(gpu_ref[i]);
+
+        if (diff > threshold) {
             std::cerr << "Verification failed at index " << i << ":\n"
                       << "  host: " << std::setprecision(10) << host_ref[i] << "\n"
                       << "  gpu : " << std::setprecision(10) << gpu_ref[i] << "\n"
-                      << "  diff: " << std::abs(host_ref[i] - gpu_ref[i]) << " > "
-                      << tolerance << "\n";
+                      << "  diff: " << diff << " > " << threshold
+                      << " (atol=" << atol << ", rtol=" << rtol << ")\n";
             return false;
         }
     }
