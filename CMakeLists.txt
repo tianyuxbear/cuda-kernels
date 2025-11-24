@@ -33,3 +33,6 @@ add_subdirectory(src/embedding)
 
 # Add normalize kernels
 add_subdirectory(src/norm)
+
+# Add matmul kernels
+add_subdirectory(src/linear)

@@ -1,0 +1,1 @@
+add_executable(linear linear.cu)
