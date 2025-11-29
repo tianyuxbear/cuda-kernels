@@ -10,7 +10,11 @@
 #include <unordered_set>
 
 #define BLOCK_SIZE 256
-constexpr inline int ceil_div(int a, int b) { return (a + b - 1) / b; }
+
+// Ceiling division
+__host__ __device__ inline int ceil_div(int a, int b) {
+    return (a + b - 1) / b;
+}
 
 using cuda_bfloat16 = nv_bfloat16;
 using cuda_bfloat162 = nv_bfloat162;
@@ -34,6 +38,25 @@ bool verify_results(const float *host_ref, const float *gpu_ref, int n,
     return true;
 }
 
+bool verify_results_half(const half *host_ref, const half *gpu_ref, int n,
+                         float atol = 1e-5f, float rtol = 1e-5f) {
+    for (int i = 0; i < n; ++i) {
+        float diff = std::abs(__half2float(host_ref[i]) - __half2float(gpu_ref[i]));
+        float threshold = atol + rtol * std::abs(__half2float(gpu_ref[i]));
+
+        if (diff > threshold) {
+            std::cerr << "Verification failed at index " << i << ":\n"
+                      << "  host: " << std::setprecision(10) << __half2float(host_ref[i]) << "\n"
+                      << "  gpu : " << std::setprecision(10) << __half2float(gpu_ref[i]) << "\n"
+                      << "  diff: " << diff << " > " << threshold
+                      << " (atol=" << atol << ", rtol=" << rtol << ")\n";
+            return false;
+        }
+    }
+    // std::cout << "Verification passed (" << n << " elements).\n";
+    return true;
+}
+
 void fill_array_with_random_floats(float *base, size_t len,
                                    float min_val = 0.0f, float max_val = 1.0f) {
     std::random_device rd;
@@ -42,6 +65,17 @@ void fill_array_with_random_floats(float *base, size_t len,
 
     for (size_t i = 0; i < len; ++i) {
         base[i] = dis(gen);
+    }
+}
+
+void fill_array_with_random_halfs(half *base, size_t len,
+                                  float min_val = 0.0f, float max_val = 1.0f) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dis(min_val, max_val);
+
+    for (size_t i = 0; i < len; ++i) {
+        base[i] = __half2float(dis(gen));
     }
 }
 

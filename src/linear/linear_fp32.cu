@@ -1,5 +1,5 @@
-#include "128x128x8.cuh"
 #include "check.cuh"
+#include "linear_fp32_kernel.cuh"
 #include "utils.cuh"
 
 #include <cstddef>
@@ -39,8 +39,8 @@ void linear_cpu(std::vector<float> &c,
 #define TEST1
 
 #ifdef TEST1
-#define test_kernel linear_128x128x8_kernel
-#define config_name "linear_128x128x8"
+#define test_kernel linear_fp32_kernel
+#define config_name "linear_fp32"
 #endif
 
 constexpr size_t WARM_UP_ITERS = 10;

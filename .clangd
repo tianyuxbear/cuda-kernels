@@ -29,6 +29,7 @@ CompileFlags:
   Add:
     # Error reporting
     - "-ferror-limit=0"  # Report all errors without limit
+    - "--cuda-gpu-arch=sm_89"
   
   Remove:
     # -------------------- CUDA Fatbin Arguments --------------------
