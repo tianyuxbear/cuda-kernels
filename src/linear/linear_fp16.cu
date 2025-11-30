@@ -27,7 +27,7 @@ void linear_cpu_half(half *c,
     }
 }
 
-#define TEST2
+#define TEST3
 
 #ifdef TEST1
 #define test_kernel linear_fp16_kernel_v1
@@ -37,6 +37,11 @@ void linear_cpu_half(half *c,
 #ifdef TEST2
 #define test_kernel linear_fp16_kernel_v2
 #define config_name "linear_fp16_v2"
+#endif
+
+#ifdef TEST3
+#define test_kernel linear_fp16_kernel_v3
+#define config_name "linear_fp16_v3"
 #endif
 
 constexpr size_t WARM_UP_ITERS = 10;
