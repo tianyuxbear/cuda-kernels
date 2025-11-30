@@ -27,7 +27,7 @@ void linear_cpu_half(half *c,
     }
 }
 
-#define TEST3
+#define TEST4
 
 #ifdef TEST1
 #define test_kernel linear_fp16_kernel_v1
@@ -42,6 +42,11 @@ void linear_cpu_half(half *c,
 #ifdef TEST3
 #define test_kernel linear_fp16_kernel_v3
 #define config_name "linear_fp16_v3"
+#endif
+
+#ifdef TEST4
+#define test_kernel linear_fp16_kernel_v4
+#define config_name "linear_fp16_v4"
 #endif
 
 constexpr size_t WARM_UP_ITERS = 10;
@@ -100,9 +105,20 @@ int main(int argc, char *argv[]) {
     gridDim.y = ceil_div(M, BM);
     gridDim.x = ceil_div(N, BN);
 
+#ifdef TEST4
+    constexpr size_t BK = 32;
+    constexpr size_t PAD = 8;
+    constexpr size_t smem_size = 2 * (BM + BN) * (BK + PAD) * sizeof(half) + 8 * 16 * 16 * sizeof(float) + 8 * 16 * 16 * sizeof(half);
+    cudaFuncSetAttribute(linear_fp16_kernel_v4, cudaFuncAttributeMaxDynamicSharedMemorySize, smem_size);
+#endif
+
     // Warm-up iterations
     for (int i = 0; i < WARM_UP_ITERS; ++i) {
+#ifdef TEST4
+        test_kernel<<<gridDim, blockDim, smem_size>>>(d_c, d_a, d_b, d_bias, M, N, K);
+#else
         test_kernel<<<gridDim, blockDim>>>(d_c, d_a, d_b, d_bias, M, N, K);
+#endif
         CUDA_CHECK(cudaDeviceSynchronize());
     }
 
@@ -115,7 +131,11 @@ int main(int argc, char *argv[]) {
     float total_time_ms = 0.0f;
     for (int i = 0; i < PROFILE_ITERS; ++i) {
         CUDA_CHECK(cudaEventRecord(start));
+#ifdef TEST4
+        test_kernel<<<gridDim, blockDim, smem_size>>>(d_c, d_a, d_b, d_bias, M, N, K);
+#else
         test_kernel<<<gridDim, blockDim>>>(d_c, d_a, d_b, d_bias, M, N, K);
+#endif
         CUDA_CHECK(cudaEventRecord(stop));
         CUDA_CHECK(cudaEventSynchronize(stop));
 
