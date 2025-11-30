@@ -373,6 +373,7 @@ __global__ void linear_fp16_kernel_v2(
 
     // Temp buffer for output
     __shared__ float s_c_float[8][16][16]; // 8 warps, 16x16 each
+    __shared__ half s_c_half[8][16][16];   // 8 warps, 16x16 each
 
     // Each warp handles a 64x64 output block, divided into 4x4 grid of 16x16 tiles.
     // Within each 16x16 tile, 32 threads (one warp) write 256 elements:
@@ -403,7 +404,7 @@ __global__ void linear_fp16_kernel_v2(
             wmma::store_matrix_sync(&s_c_float[wid][0][0], frag_c[i][j], 16, wmma::mem_row_major);
             __syncwarp();
 
-// Add bias and write to global memory
+            // Add bias
 #pragma unroll
             for (int idx = lane_id; idx < 256; idx += 32) {
                 int local_m = idx >> 4;
@@ -411,10 +412,27 @@ __global__ void linear_fp16_kernel_v2(
                 int global_m = tile_m + local_m;
                 int global_n = tile_n + local_n;
 
-                if (global_m < M && global_n < N) {
-                    float val = s_c_float[wid][local_m][local_n];
-                    float b = bias_vals[j];
-                    C[OFFSET(global_m, global_n, N)] = __float2half(val + b);
+                s_c_half[wid][local_m][local_n] = __float2half(s_c_float[wid][local_m][local_n] + bias_vals[j]);
+            }
+            __syncwarp();
+
+            // Write to global memory using FLOAT4 (128-bit = 8 halfs)
+            int row = lane_id >> 1;
+            int col = (lane_id & 1) << 3;
+
+            int global_m = tile_m + row;
+            int global_n = tile_n + col;
+
+            if (global_m < M && global_n + 7 < N) {
+                // Vectorized 128-bit store (8 halfs at once)
+                FLOAT4(C[OFFSET(global_m, global_n, N)]) = FLOAT4(s_c_half[wid][row][col]);
+            } else if (global_m < M) {
+                // Boundary case: element-wise store
+#pragma unroll
+                for (int c = 0; c < 8; c++) {
+                    if (global_n + c < N) {
+                        C[OFFSET(global_m, global_n + c, N)] = s_c_half[wid][row][col + c];
+                    }
                 }
             }
             __syncwarp();
