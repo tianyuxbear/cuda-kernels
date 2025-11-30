@@ -57,6 +57,25 @@ bool verify_results_half(const half *host_ref, const half *gpu_ref, int n,
     return true;
 }
 
+bool verify_results_bf16(const cuda_bfloat16 *host_ref, const cuda_bfloat16 *gpu_ref, int n,
+                         float atol = 1e-5f, float rtol = 1e-5f) {
+    for (int i = 0; i < n; ++i) {
+        float diff = std::abs(__bfloat162float(host_ref[i]) - __bfloat162float(gpu_ref[i]));
+        float threshold = atol + rtol * std::abs(__bfloat162float(gpu_ref[i]));
+
+        if (diff > threshold) {
+            std::cerr << "Verification failed at index " << i << ":\n"
+                      << "  host: " << std::setprecision(10) << __bfloat162float(host_ref[i]) << "\n"
+                      << "  gpu : " << std::setprecision(10) << __bfloat162float(gpu_ref[i]) << "\n"
+                      << "  diff: " << diff << " > " << threshold
+                      << " (atol=" << atol << ", rtol=" << rtol << ")\n";
+            return false;
+        }
+    }
+    // std::cout << "Verification passed (" << n << " elements).\n";
+    return true;
+}
+
 void fill_array_with_random_floats(float *base, size_t len,
                                    float min_val = 0.0f, float max_val = 1.0f) {
     std::random_device rd;
@@ -75,7 +94,18 @@ void fill_array_with_random_halfs(half *base, size_t len,
     std::uniform_real_distribution<float> dis(min_val, max_val);
 
     for (size_t i = 0; i < len; ++i) {
-        base[i] = __half2float(dis(gen));
+        base[i] = __float2half(dis(gen));
+    }
+}
+
+void fill_array_with_random_bf16s(cuda_bfloat16 *base, size_t len,
+                                  float min_val = 0.0f, float max_val = 1.0f) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dis(min_val, max_val);
+
+    for (size_t i = 0; i < len; ++i) {
+        base[i] = __float2bfloat16(dis(gen));
     }
 }
 
