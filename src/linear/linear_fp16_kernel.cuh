@@ -374,6 +374,24 @@ __global__ void linear_fp16_kernel_v2(
     // Temp buffer for output
     __shared__ float s_c_float[8][16][16]; // 8 warps, 16x16 each
 
+    // Each warp handles a 64x64 output block, divided into 4x4 grid of 16x16 tiles.
+    // Within each 16x16 tile, 32 threads (one warp) write 256 elements:
+    //   - Each thread writes 8 elements in a single column (rows 0,2,4,6,8,10,12,14)
+    //   - The column index is fixed per thread: local_n = lane_id & 15
+    //
+    // For the entire 64x64 block, each thread writes:
+    //   - 4 (i-tiles) × 4 (j-tiles) × 8 (rows per tile) = 128 elements
+    //   - Spanning 32 rows (8 rows × 4 i-tiles) × 4 columns (one per j-tile)
+    //
+    // Since each thread always accesses the same relative column (lane_id & 15),
+    // we only need to preload 4 bias values (one for each j-tile).
+    float bias_vals[4];
+#pragma unroll
+    for (int j = 0; j < 4; j++) {
+        int global_n = store_c_gmem_n + j * 16 + (lane_id & 15);
+        bias_vals[j] = (global_n < N) ? __half2float(bias[global_n]) : 0.0f;
+    }
+
 #pragma unroll
     for (int i = 0; i < 4; i++) {
 #pragma unroll
@@ -395,7 +413,7 @@ __global__ void linear_fp16_kernel_v2(
 
                 if (global_m < M && global_n < N) {
                     float val = s_c_float[wid][local_m][local_n];
-                    float b = __half2float(bias[global_n]);
+                    float b = bias_vals[j];
                     C[OFFSET(global_m, global_n, N)] = __float2half(val + b);
                 }
             }
