@@ -42,6 +42,9 @@ void print_device_properties(int device_id) {
     printf("  Total Constant Memory:        ");
     print_memory_size(prop.totalConstMem);
     printf("\n");
+    printf("  Shared Memory per SM:         ");
+    print_memory_size(prop.sharedMemPerMultiprocessor);
+    printf("\n");
     printf("  Shared Memory Per Block:      ");
     print_memory_size(prop.sharedMemPerBlock);
     printf("\n");
