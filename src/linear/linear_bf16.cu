@@ -27,7 +27,7 @@ void linear_cpu_bf16(cuda_bfloat16 *c,
     }
 }
 
-#define TEST4
+#define TEST5
 
 #ifdef TEST1
 #define test_kernel linear_bf16_kernel_v1
@@ -47,6 +47,11 @@ void linear_cpu_bf16(cuda_bfloat16 *c,
 #ifdef TEST4
 #define test_kernel linear_bf16_kernel_v4
 #define config_name "linear_bf16_v4"
+#endif
+
+#ifdef TEST5
+#define test_kernel linear_bf16_cublaslt
+#define config_name "linear_bf16_cublaslt"
 #endif
 
 constexpr size_t WARM_UP_ITERS = 10;
@@ -116,6 +121,8 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < WARM_UP_ITERS; ++i) {
 #ifdef TEST4
         test_kernel<<<gridDim, blockDim, smem_size>>>(d_c, d_a, d_b, d_bias, M, N, K);
+#elif defined(TEST5)
+        test_kernel(d_c, d_a, d_b, d_bias, M, N, K);
 #else
         test_kernel<<<gridDim, blockDim>>>(d_c, d_a, d_b, d_bias, M, N, K);
 #endif
@@ -133,6 +140,8 @@ int main(int argc, char *argv[]) {
         CUDA_CHECK(cudaEventRecord(start));
 #ifdef TEST4
         test_kernel<<<gridDim, blockDim, smem_size>>>(d_c, d_a, d_b, d_bias, M, N, K);
+#elif defined(TEST5)
+        test_kernel(d_c, d_a, d_b, d_bias, M, N, K);
 #else
         test_kernel<<<gridDim, blockDim>>>(d_c, d_a, d_b, d_bias, M, N, K);
 #endif

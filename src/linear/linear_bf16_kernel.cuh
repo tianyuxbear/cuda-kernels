@@ -1,6 +1,8 @@
 #pragma once
 
 #include "utils.cuh"
+#include <cublasLt.h>
+#include <cuda_runtime.h>
 #include <mma.h>
 
 using namespace nvcuda;
@@ -1085,4 +1087,56 @@ __global__ void linear_bf16_kernel_v4(
             __syncwarp();
         }
     }
+}
+
+void linear_bf16_cublaslt(
+    cuda_bfloat16 *C,
+    const cuda_bfloat16 *A,
+    const cuda_bfloat16 *B,
+    const cuda_bfloat16 *bias,
+    const size_t M, const size_t N, const size_t K) {
+
+    cublasLtHandle_t handle;
+    cublasLtCreate(&handle);
+
+    cublasLtMatmulDesc_t matmulDesc;
+    cublasLtMatrixLayout_t Adesc, Bdesc, Cdesc;
+
+    cublasLtMatmulDescCreate(&matmulDesc, CUBLAS_COMPUTE_32F, CUDA_R_32F);
+
+    // We want: C[M,N] = A[M,K] * B^T[K,N] where B is stored as [N,K]
+    // Row-major view: C = A * B^T
+    // Column-major view: C^T = (A * B^T)^T = B * A^T
+    // So in column-major: C^T[N,M] = B[N,K] * A^T[K,M]
+
+    cublasOperation_t transA = CUBLAS_OP_T; // Transpose A
+    cublasOperation_t transB = CUBLAS_OP_N; // No transpose B
+    cublasLtMatmulDescSetAttribute(matmulDesc, CUBLASLT_MATMUL_DESC_TRANSA, &transA, sizeof(transA));
+    cublasLtMatmulDescSetAttribute(matmulDesc, CUBLASLT_MATMUL_DESC_TRANSB, &transB, sizeof(transB));
+
+    // In column-major layout parameters (rows, cols, ld):
+    // A stored as [M,K] row-major = A^T stored as [K,M] column-major, ld=M
+    // B stored as [N,K] row-major = B^T stored as [K,N] column-major, ld=N
+    // C stored as [M,N] row-major = C^T stored as [N,M] column-major, ld=M
+    cublasLtMatrixLayoutCreate(&Adesc, CUDA_R_16BF, K, M, M);
+    cublasLtMatrixLayoutCreate(&Bdesc, CUDA_R_16BF, N, K, N);
+    cublasLtMatrixLayoutCreate(&Cdesc, CUDA_R_16BF, N, M, M);
+
+    if (bias != nullptr) {
+        cublasLtEpilogue_t epilogue = CUBLASLT_EPILOGUE_BIAS;
+        cublasLtMatmulDescSetAttribute(matmulDesc, CUBLASLT_MATMUL_DESC_EPILOGUE, &epilogue, sizeof(epilogue));
+        cublasLtMatmulDescSetAttribute(matmulDesc, CUBLASLT_MATMUL_DESC_BIAS_POINTER, &bias, sizeof(const void *));
+    }
+
+    const float alpha = 1.0f, beta = 0.0f;
+
+    // cublasLtMatmul computes: D = alpha * op(A) * op(B) + beta * C
+    // We want: C^T = B * A^T, so we pass B first, then A
+    cublasLtMatmul(handle, matmulDesc, &alpha, B, Bdesc, A, Adesc, &beta, C, Cdesc, C, Cdesc, nullptr, nullptr, 0, 0);
+
+    cublasLtMatrixLayoutDestroy(Adesc);
+    cublasLtMatrixLayoutDestroy(Bdesc);
+    cublasLtMatrixLayoutDestroy(Cdesc);
+    cublasLtMatmulDescDestroy(matmulDesc);
+    cublasLtDestroy(handle);
 }
